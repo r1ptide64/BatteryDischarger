@@ -10,8 +10,8 @@ PinHelper::PinHelper()
 
 void PinHelper::Update(float vpc, ulong now)
 {
-	byte delta;
-	if (_lastChange > 0 && _lastChange + MIN_STATE_TIME < now) {
+	int8_t delta;
+	if (_lastChange > 0 && _lastChange + MIN_STATE_TIME > now && _state == FULL) {
 		delta = 0;
 	}
 	else if (vpc > STORAGE_VOLTAGE) {
@@ -20,20 +20,27 @@ void PinHelper::Update(float vpc, ulong now)
 	else {
 		delta = -1;
 	}
+	Serial.println(String("ph: delta = " + String(delta) + ", vpc = " + String(vpc)));
 	_state = ChangeState(delta, now);
+	Serial.println(String("ph: new _state = " + String(_state)));
 	ApplyState();
 }
 
-byte PinHelper::GetStateByte()
+dcstate PinHelper::State(void)
 {
-	return (byte)_state;
+	return _state;
 }
 
-dcstate PinHelper::ChangeState(byte delta, ulong now)
+int8_t PinHelper::GetStateInt()
 {
-	byte newEnumVal = GetStateByte() + delta;
-	newEnumVal = min(max(newEnumVal, 4), 0);
-	dcstate retVal = (dcstate)newEnumVal;
+	return (int8_t)_state;
+}
+
+dcstate PinHelper::ChangeState(int8_t delta, ulong now)
+{
+	int8_t newEnumVal = GetStateInt() + delta;
+	newEnumVal = max(min(newEnumVal, 4), 0);
+	dcstate retVal = (delta >= 0) ? FULL : OFF; //(dcstate)newEnumVal;
 	if (retVal != _state) {
 		_lastChange = now;
 	}
@@ -43,23 +50,20 @@ dcstate PinHelper::ChangeState(byte delta, ulong now)
 void PinHelper::ApplyState(void)
 {
 	uint16_t ledVal, transVal;
-	void(*fun)(uint16_t, uint16_t);
+	Serial.println(String("ph.ApplyState: _state = " + String(_state)));
 	switch (_state)
 	{
 	case QUARTER:
 		ledVal = 765;
 		transVal = 255;
-		fun = &this->SetPinsA;
 		break;
 	case HALF:
 		ledVal = 511;
 		transVal = 511;
-		fun = &this->SetPinsA;
 		break;
 	case THREEQUARTER:
 		ledVal = 255;
 		transVal = 765;
-		fun = &this->SetPinsA;
 		break;
 	case FULL:
 		ledVal = LOW;
@@ -68,23 +72,18 @@ void PinHelper::ApplyState(void)
 	default: // OFF
 		ledVal = HIGH;
 		transVal = LOW;
-		fun = &this->SetPinsD;
 		break;
 	}
-	fun(transVal, ledVal);
-	if (GetStateByte() > 0) {
-		DcTime++;
+	Serial.println(String("ph.ApplyState: transVal = " + String(transVal)));
+	if (1) { //ledVal == LOW || ledVal == HIGH) {
+		digitalWrite(TRANSISTOR_PIN, transVal);
+		digitalWrite(BUILTIN_LED, ledVal);
 	}
-}
-
-void PinHelper::SetPinsD(uint16_t trans, uint16_t led)
-{
-	digitalWrite(TRANSISTOR_PIN, trans);
-	digitalWrite(BUILTIN_LED, led);
-}
-
-void PinHelper::SetPinsA(uint16_t trans, uint16_t led)
-{
-	analogWrite(TRANSISTOR_PIN, trans);
-	analogWrite(BUILTIN_LED, led);
+	//else {
+	//	analogWrite(TRANSISTOR_PIN, transVal);
+	//	analogWrite(BUILTIN_LED, ledVal);
+	//}
+	if (GetStateInt() > 0) {
+		DcTime += 1000;
+	}
 }

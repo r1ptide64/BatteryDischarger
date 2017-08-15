@@ -5,19 +5,29 @@ PBHelper::PBHelper(void)
 	WiFi.begin("GLaDOS", WIFI_PASSWORD);
 }
 
+void PBHelper::Update(PinHelper * pinHelper)
+{
+	ConnectIfNecessary();
+	if (pinHelper->DcTime < MIN_NOTIFICATION_TIME || pinHelper->State() != OFF) {
+		return;
+	}
+	Push("Battery is done discharging!", "Battery Done");
+}
+
 bool PBHelper::ConnectIfNecessary(void)
 {
-	if (!this->_connected && WiFi.isConnected()) {
-		this->_connected = this->_pb.openConnection();
+	if (!_connected && WiFi.isConnected()) {
+		_connected = _pb.openConnection();
 	}
-	return this->_connected;
+	return _connected;
 }
 
 bool PBHelper::Push(const String message, const String title)
 {
-	if (!this->_connected || _pushSent) {
+	if (!_connected || _pushSent) {
 		return false;
 	}
 	_pb.sendNotePush(message, title);
+	_pushSent = true;
 	return true;
 }

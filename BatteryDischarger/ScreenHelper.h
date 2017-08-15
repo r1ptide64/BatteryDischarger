@@ -13,7 +13,7 @@ class ScreenHelper
 public:
 	ScreenHelper(void);
 	void Update(VoltageHelper *vh, PinHelper *ph, ulong now);
-	void Update(float voltage, byte numCells, ulong dcTime, ulong onTime);
+	/*void Update(float voltage, byte numCells, ulong dcTime, ulong onTime);*/
 
 private:
 	SSD1306Brzo *_display;
